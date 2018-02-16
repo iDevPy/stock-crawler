@@ -1,24 +1,22 @@
-# coding: utf-8
-from scrapy.spider import BaseSpider
-from scrapy.selector import HtmlXPathSelector
-
-from crawler.items import StockItem
+import scrapy
+from scraper.items import StockItem
 
 
-class StockSpider(BaseSpider):
-	name = 'stock'
-	allowed_domains = ['br.financas.yahoo.com']
-	start_urls = [
-		'http://br.financas.yahoo.com/q?s=GOOG',
-		'http://br.financas.yahoo.com/q?s=AAPL',
-		'http://br.financas.yahoo.com/q?s=FB',
-	]
+class StockSpider(scrapy.Spider):
+    name = "stock"
+    allowed_domains = ['finance.yahoo.com']
 
-	def parse(self, response):
-		self.log('URL: %s' % response.url)
+    def start_requests(self):
+        urls = [
+            'https://finance.yahoo.com/quote/GOOG/summary?p=GOOG',
+            'https://finance.yahoo.com/quote/AAPL/summary?p=AAPL',
+            'https://finance.yahoo.com/quote/FB/summary?p=FB',
+        ]
+        for url in urls:
+            yield scrapy.Request(url=url, callback=self.parse)
 
-		hxs = HtmlXPathSelector(response)
-		item = StockItem()
-		item['title'] = hxs.select('//*[@id="yfi_rt_quote_summary"]/div[1]/div/h2/text()').extract()
-		item['value'] = hxs.select('//*[@id="yfi_rt_quote_summary"]/div[2]/p/span[1]/span/text()').extract()
-		return item
+    def parse(self, response):
+        for title in response.xpath('//h1/text()').extract():
+            yield StockItem(title=title)
+        for price in response.xpath('//*[@id="quote-header-info"]/div[3]/div[1]/span/text()').extract():
+            yield StockItem(price=price)
